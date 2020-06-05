@@ -46,6 +46,7 @@ class AudioOutput
       return count;
     }
     virtual bool stop() { return false; }
+    virtual void flush() { return; }
     virtual bool loop() { return true; }
 
   public:
