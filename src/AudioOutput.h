@@ -33,6 +33,7 @@ class AudioOutput
     virtual bool SetBitsPerSample(int bits) { bps = bits; return true; }
     virtual bool SetChannels(int chan) { channels = chan; return true; }
     virtual bool SetGain(float f) { if (f>4.0) f = 4.0; if (f<0.0) f=0.0; gainF2P6 = (uint8_t)(f*(1<<6)); return true; }
+    virtual bool SetGainF2P6(uint8_t gain) { gainF2P6 = gain; return true; }
     virtual bool begin() { return false; };
     typedef enum { LEFTCHANNEL=0, RIGHTCHANNEL=1 } SampleIndex;
     virtual bool ConsumeSample(int16_t sample[2]) { (void)sample; return false; }

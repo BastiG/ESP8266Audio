@@ -117,9 +117,13 @@ bool AudioGeneratorMP3a::loop()
       sprintf(buff, "MP3 decode error %d", ret);
       cb.st(ret, buff);
     } else {
-      lastFrameEnd = buffValid - bytesLeft;
       MP3FrameInfo fi;
       MP3GetLastFrameInfo(hMP3Decoder, &fi);
+      if (fi.samprate == 0) {
+        //Serial.println("Got samprate = 0, skipping");
+        goto done;
+      }
+      lastFrameEnd = buffValid - bytesLeft;
       if ((int)fi.samprate!= (int)lastRate) {
         output->SetRate(fi.samprate);
         lastRate = fi.samprate;

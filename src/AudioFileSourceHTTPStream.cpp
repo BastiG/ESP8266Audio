@@ -51,6 +51,40 @@ bool AudioFileSourceHTTPStream::open(const char *url)
   return true;
 }
 
+bool AudioFileSourceHTTPStream::open(const char *url, uint32_t offset) {
+  const char* headerKeys[] = { "Accept-Ranges" };
+
+  pos = offset;
+  http.begin(client, url);
+  http.setReuse(true);
+  http.collectHeaders(headerKeys, 1);
+  int code = http.sendRequest("HEAD");
+  if (code != HTTP_CODE_OK) {
+    http.end();
+    Serial.println("HEAD failed, fallback to open(url)");
+    return open(url);
+  }
+  if (http.header("Accept-Ranges").equals("bytes")) {
+    size = http.getSize();
+    char rangeHeader[32];
+    snprintf(rangeHeader, 32, "bytes=%d-%d", offset, size-1);
+    http.addHeader("Range", rangeHeader);
+    code = http.GET();
+    if (code != HTTP_CODE_OK && code != HTTP_CODE_PARTIAL_CONTENT) {
+      http.end();
+      cb.st(STATUS_HTTPFAIL, PSTR("Can't open HTTP request"));
+      return false;
+    }
+    Serial.println("HTTP OK");
+    strncpy(saveURL, url, sizeof(saveURL));
+    saveURL[sizeof(saveURL)-1] = 0;
+    return true;
+  } else {
+    http.end();
+    return open(url);
+  }
+}
+
 AudioFileSourceHTTPStream::~AudioFileSourceHTTPStream()
 {
   http.end();
@@ -123,6 +157,16 @@ retry:
 
 bool AudioFileSourceHTTPStream::seek(int32_t pos, int dir)
 {
+  if (dir == SEEK_SET && this->pos < pos) {
+    uint8_t buffer[128];
+    while(this->pos < pos) {
+      uint32_t toRead = pos - this->pos;
+      if (toRead > 128) toRead = 128;
+      if (read(buffer, toRead) == 0) return false;
+    }
+    return true;
+  }
+
   audioLogger->printf_P(PSTR("ERROR! AudioFileSourceHTTPStream::seek not implemented!"));
   (void) pos;
   (void) dir;
@@ -131,6 +175,12 @@ bool AudioFileSourceHTTPStream::seek(int32_t pos, int dir)
 
 bool AudioFileSourceHTTPStream::close()
 {
+  WiFiClient* client = http.getStreamPtr();
+  if (client->connected() && client->available() == 0) {
+    client->flush();
+  } else {
+    client->stop();
+  }
   http.end();
   return true;
 }

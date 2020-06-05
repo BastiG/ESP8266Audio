@@ -29,7 +29,7 @@
 
 AudioFileSourceSPIRAMBuffer::AudioFileSourceSPIRAMBuffer(AudioFileSource *source, uint8_t csPin, uint32_t buffSizeBytes)
 {
-    ram.begin(40, csPin);
+    ram.begin(20, csPin);
     ramSize = buffSizeBytes;
     writePtr = 0;
     readPtr = 0;
@@ -122,6 +122,7 @@ uint32_t AudioFileSourceSPIRAMBuffer::read(void *data, uint32_t len)
     if (len) {
         bytes += src->read(data, len);
         filled = false;
+        cb.st(999, PSTR("Buffer underflow"));
     }
     return bytes;
 }
@@ -133,7 +134,7 @@ void AudioFileSourceSPIRAMBuffer::fill()
 
     for (auto i=0; i<5; i++) {
         // Make sure there is at least buffer size free in RAM
-        uint8_t buffer[128];
+        uint8_t buffer[256];
         if ((ramSize - (writePtr - readPtr)) < sizeof(buffer)) {
             return;
         }
